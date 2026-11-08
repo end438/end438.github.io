@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生日快乐！！！</title>
+<style>
+body{
+  margin:0; padding:20px;
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  background:#1a1a2e; color:#e0e0e0;
+  min-height:100vh; overflow-x:hidden;
+}
+.box{
+  max-width:420px; margin:40px auto;
+  background:#16213e; border-radius:16px;
+  padding:24px; box-shadow:0 8px 32px rgba(0,0,0,0.3);
+}
+h2{ color:#e94560; margin-top:0; text-align:center; }
+input{
+  width:100%; box-sizing:border-box;
+  padding:12px; font-size:16px;
+  border:2px solid #0f3460; border-radius:10px;
+  background:#0f3460; color:#fff; outline:none;
+  margin-bottom:12px; text-align:center;
+}
+button{
+  width:100%; padding:12px;
+  font-size:16px; border:none; border-radius:10px;
+  background:#e94560; color:#fff; cursor:pointer;
+}
+button:active{ background:#c23152; }
+.out{
+  margin-top:16px; padding:12px;
+  background:#0f3460; border-radius:10px;
+  min-height:48px; line-height:1.6; text-align:center;
+}
+.step{ display:none; }
+.step.active{ display:block; }
+.lock{ text-align:center; }
+.msg{ color:#e94560; margin-top:10px; font-size:14px; }
+
+/* 爱心页 */
+.secret-page{
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  min-height:100vh; text-align:center;
+}
+.secret-page.show{ display:flex; }
+.heart{ font-size:120px; animation:beat 1s infinite; }
+@keyframes beat{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.25); }
+}
+.five-hearts{ margin-top:24px; font-size:40px; letter-spacing:10px; }
+.text{ margin-top:16px; font-size:20px; color:#ff7088; }
+
+/* 彩蛋页 */
+.egg{ text-align:center; }
+.egg .big{ font-size:48px; color:#e94560; font-weight:bold; }
+
+/* 猜数字 */
+.guess-box{ text-align:center; }
+.guess-box input{ text-align:center; }
+.hint{ margin-top:10px; font-size:14px; color:#ff9bb3; }
+
+/* 飘爱心 */
+.float-heart{
+  position:fixed; font-size:24px; animation:floatUp 3s linear forwards; pointer-events:none;
+}
+@keyframes floatUp{
+  0%{ opacity:1; transform:translateY(0) scale(1); }
+  100%{ opacity:0; transform:translateY(-120vh) scale(1.5); }
+}
+</style>
+</head>
+<body>
+
+<!-- 密码页 -->
+<div class="box step active" id="lock">
+  <h2>生日快乐喵~</h2>
+  <div class="lock">输入密码才能打开（是八位数哦，记得把日期输全）</div>
+  <input id="pwd" type="password" placeholder="密码" style="margin-top:16px">
+  <button onclick="checkPwd()">进入</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<!-- 年份输入 -->
+<div class="box step" id="yearPage">
+  <h2>📅 先告诉我</h2>
+  <div>我们认识是哪一年？</div>
+  <input id="year" type="number" placeholder="比如 2022？" inputmode="numeric">
+  <button onclick="nextYear()">确定</button>
+  <div class="msg" id="yearMsg"></div>
+</div>
+
+<!-- 主菜单 -->
+<div class="box step" id="menu">
+  <h2>📜 选一个</h2>
+  <button onclick="goSecret()" style="margin-bottom:8px">喵喵喵~</button>
+  <button onclick="goEgg()" style="margin-bottom:8px">🎁 专属彩蛋</button>
+  <button onclick="goGuess()" style="margin-bottom:8px">🎲 猜数字</button>
+  <button onclick="goQuit()" style="background:#0f3460">👋 退出</button>
+</div>
+
+<!-- 爱心页 -->
+<div class="secret-page" id="secretPage">
+  <div class="heart">❤️</div>
+  <div class="five-hearts">🎂🎂🎂🎂🎂</div>
+  <div class="text" id="yearText"></div>
+  <div class="text">生日快乐咪！（虽说是第一次给你正经过生日，对不起啦）</div>
+  <button onclick="backMenu()" style="margin-top:24px;max-width:200px">返回</button>
+</div>
+
+<!-- 彩蛋页 -->
+<div class="box step" id="eggPage">
+  <h2>🎁 专属彩蛋</h2>
+  <div class="egg">
+    <div id="eggText" class="out"></div>
+    <button onclick="backMenu()" style="margin-top:12px">返回</button>
+  </div>
+</div>
+
+<!-- 猜数字页 -->
+<div class="box step" id="guessPage">
+  <h2>🎲 猜数字</h2>
+  <div class="guess-box">
+    <div>我心里想了一个 1~100 的数</div>
+    <input id="guess" type="number" placeholder="你的猜测" inputmode="numeric">
+    <button onclick="doGuess()">猜！</button>
+    <div class="hint" id="hint"></div>
+    <button onclick="backMenu()" style="margin-top:12px;background:#0f3460">返回</button>
+  </div>
+</div>
+
+<!-- 退出页 -->
+<div class="box step" id="quitPage">
+  <h2>我谨代表我个人，向你献上最诚挚的生日祝福</h2>
+  <div class="out" id="quitText"></div>
+</div>
+
+<script>
+// ===== 配置 =====
+const PASSWORD = "20101108";
+let year = "";
+let targetNum = 0;
+
+// ===== 密码 =====
+function checkPwd(){
+  const v = document.getElementById("pwd").value;
+  if(v === PASSWORD){
+    document.getElementById("lock").classList.remove("active");
+    document.getElementById("yearPage").classList.add("active");
+  } else {
+    document.getElementById("msg").textContent = "我草泥马，你个扎啤，还想冒充里脊乐滚蛋啊！";
+    document.getElementById("pwd").value = "";
+  }
+}
+document.getElementById("pwd").addEventListener("keydown", function(e){
+  if(e.key === "Enter") checkPwd();
+});
+
+// ===== 年份 =====
+function nextYear(){
+  year = document.getElementById("year").value;
+  if(!year || year < 2000 || year > 2030){
+    document.getElementById("yearMsg").textContent = "认真输啦，比如 2021";
+    return;
+  }
+  document.getElementById("yearPage").classList.remove("active");
+  document.getElementById("menu").classList.add("active");
+}
+
+// ===== 菜单跳转 =====
+function goSecret(){
+  document.getElementById("menu").classList.remove("active");
+  document.getElementById("secretPage").classList.add("show");
+  const now = new Date().getFullYear();
+  const diff = now - parseInt(year);
+  document.getElementById("yearText").textContent =
+    year + " 年到现在，已经 " + diff + " 年了，希望我们的关系可以一直长久下去，嘻嘻";
+}
+
+function goEgg(){
+  document.getElementById("menu").classList.remove("active");
+  document.getElementById("eggPage").classList.add("active");
+  const eggs = [
+    "能在"+year + " 年认识你，是我直到如今仍然感到幸运的事",
+    "从 " + year + " 年到现在，我仍能记得我们第一次认识的情形",
+    "如果时间能倒流，我还是会选择在 " + year + " 年和你做兄弟",
+  ];
+  const pick = eggs[Math.floor(Math.random() * eggs.length)];
+  document.getElementById("eggText").innerHTML = pick;
+}
+
+function goGuess(){
+  targetNum = Math.floor(Math.random() * 100) + 1;
+  document.getElementById("guess").value = "";
+  document.getElementById("hint").textContent = "";
+  document.getElementById("menu").classList.remove("active");
+  document.getElementById("guessPage").classList.add("active");
+}
+
+function goQuit(){
+  document.getElementById("menu").classList.remove("active");
+  document.getElementById("quitPage").classList.add("active");
+  document.getElementById("quitText").innerHTML =
+    "从 " + year + " 年到现在<br>我们一起经历了太多太多，感谢有你，生日快乐哦——我最好的兄弟(。・ω・。)";
+}
+
+// ===== 猜数字逻辑 =====
+function doGuess(){
+  const v = parseInt(document.getElementById("guess").value);
+  if(!v || v < 1 || v > 100){
+    document.getElementById("hint").textContent = "1 到 100 之间哦";
+    return;
+  }
+  if(v === targetNum){
+    document.getElementById("hint").textContent = "🎉 猜对了！就是 " + v + "！还是你懂我 ，不愧是我的好兄弟ヾ(•ω•`)o";
+    spawnHeart();
+  } else if(v < targetNum){
+    document.getElementById("hint").textContent = "再大一点 ↑";
+  } else {
+    document.getElementById("hint").textContent = "再小一点 ↓";
+  }
+}
+document.getElementById("guess") && document.getElementById("guess").addEventListener("keydown", function(e){
+  if(e.key === "Enter") doGuess();
+});
+
+// ===== 返回 =====
+function backMenu(){
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".secret-page").forEach(s => s.classList.remove("show"));
+  document.getElementById("menu").classList.add("active");
+}
+
+// ===== 飘爱心 =====
+function spawnHeart(){
+  const h = document.createElement("div");
+  h.className = "float-heart";
+  h.textContent = "❤️";
+  h.style.left = Math.random() * 90 + "vw";
+  h.style.top = "90vh";
+  document.body.appendChild(h);
+  setTimeout(() => h.remove(), 3000);
+}
+
+// 爱心页点击也飘
+document.addEventListener("click", function(e){
+  if(document.getElementById("secretPage").classList.contains("show")){
+    const h = document.createElement("div");
+    h.className = "float-heart";
+    h.textContent = "❤️";
+    h.style.left = e.clientX + "px";
+    h.style.top = e.clientY + "px";
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 3000);
+  }
+});
+</script>
+
+</body>
+</html>
